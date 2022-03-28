@@ -9,7 +9,7 @@ class ShodanLib:
 
     # Initalize the Shodan API
     def __init__(self):
-        self.api = Shodan('j5xP0muNB0N3gG4fo8MenaJCaCZO4Bzd')
+        self.api = Shodan('API KEY HERE')
 
     # Query Shodan for a specific Ip and store it in a dictoary
     # Then divide the values into variables 

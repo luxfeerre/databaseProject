@@ -62,6 +62,7 @@ class MySqlProgram:
 
         try:
             self.cursor.execute(tableCommand, args)
+            print("Data commited.")
         except Error as e:
             print(e)
 
@@ -69,45 +70,67 @@ class MySqlProgram:
         # # This function first creates variables with insert commands
         # Then it executes it.
 
-        query = "INSERT INTO Investigation(CaseNumber,InvestigationStart,Handler, Hash)" \
-                "VALUES(%s, %s, %s, %s)"
+        print("\n#####################################\n")
+        print("Inserting Case data into Investigation Table.")
+        query = "INSERT INTO Investigation(CaseNumber,InvestigationStart,Handler)" \
+                "VALUES(%s, %s, %s)"
 
         self.__storeDataInDb(query, caseData)
         self.connect.commit()
+        print("\n#####################################\n")
 
     def insertFileIntoDb(self, fileData):
         # # This function first creates variables with insert commands
         # Then it executes it.
 
-        query = "INSERT INTO File(Hash, FileName, IP_ID)" \
+        print("\n#####################################\n")
+        print("Inserting File data into File Table.")
+        query = "INSERT INTO File(Hash, FileName, CaseNumber)" \
                 "VALUES(%s, %s, %s)"
 
         self.__storeDataInDb(query, fileData)
         self.connect.commit()
+        print("\n#####################################\n")
 
 
     def insertIpIntoDb(self, ipData):
         # # This function first creates variables with insert commands
         # Then it executes it.
 
+        print("\n#####################################\n")
+        print("Inserting IP Address data into IP_Address Table.")
         query = "INSERT INTO IP_Address(IP_ID, IP, DomainName, Ports, CountryCode, GeoData)" \
                 "VALUES(%s, %s, %s, %s, %s, %s)"
 
         self.__storeDataInDb(query, ipData)
         self.connect.commit()
+        print("\n#####################################\n")
 
-    def query1(slef, ip, ipId):
-        # This function querys the database for a specific IP address and it's ID
+    def insertJunctionBetweenIPFileDb(self, relationData):
+        # # This function first creates variables with insert commands
+        # Then it executes it.
+
+        print("\n#####################################\n")
+        print("Creating a relation between File table and the IP table.")
+        query = "INSERT INTO FileIpRelation(Hash, IP_ID)" \
+                "VALUES(%s, %s)"
+
+        self.__storeDataInDb(query, relationData)
+        self.connect.commit()
+        print("\n#####################################\n")
+
+    def query1(self, ip):
+        # This function querys the database for a specific IP address and it's IDs
         # Then it fetchesall into a result which iwll be a tuple which is then printed out
-        query = "SELECT FileName FROM FILE, IP_Address WHERE IP = %s AND File.IP_ID = %s"
+        query = "SELECT FileName, IP, IP_Address.IP_ID FROM File, IP_Address, FileIpRelation WHERE IP = %s AND FileIpRelation.IP_ID = IP_Address.IP_ID  AND File.Hash = FileIpRelation.Hash"
 
-        self.cursor.execute(query, (ip, ipId))
+        self.cursor.execute(query, (ip,))
 
         result = self.cursor.fetchall()
 
         print("\n#####################################\n")
         for i in result:
-            print("FileName: " + i)
+            print("FileName: " + i[0] + ", IP: " + i[1] + "ID: " + i[2])
 
         print("\n#####################################\n")
 
@@ -115,44 +138,44 @@ class MySqlProgram:
         # This function seraches for a specific hash and prints out the casenubmer and the fiels realted.
         # Then it fetchesall into a result which iwll be a tuple which is then printed out
 
-        query = "SELECT Investigation.CaseNumber, FileName FROM Investigation, File WHERE File.Hash = %s"
+        query = "SELECT Investigation.CaseNumber, FileName FROM Investigation, File WHERE File.Hash = %s AND File.CaseNumber = Investigation.CaseNumber"
         self.cursor.execute(query, (serchedHash,))
 
         result = self.cursor.fetchall()
 
         print("\n#####################################\n")
         for i in result:
-            print("CaseNumber: " + str(i[0]))
-            print("FileName: " + i[1])
+            print("CaseNumber: " + str(i[0]) + ", FileName: " + i[1])
         print("\n#####################################\n")
 
 
     def query3(self):
         # This function querys all investigations and joins theam with the file table based on Hashes
-        # Then it fetchesall into a result which iwll be a tuple which is then printed out
+        # Then it fetchesall into a result which will be a tuple which is then printed out
 
-        query = "SELECT CaseNumber, FileName, File.Hash FROM Investigation JOIN File on File.Hash = Investigation.Hash"
+        query = "SELECT Investigation.CaseNumber, FileName FROM Investigation JOIN File on File.CaseNumber = Investigation.CaseNumber"
 
         self.cursor.execute(query)
 
         result = self.cursor.fetchall()
 
         print("\n#####################################\n")
-        print(result)
+        for i in result:
+            print("\nCaseNumber: " + str(i[0]) + ", FileName: " + i[1])
         print("\n#####################################\n")
 
     def query4(self, caseNumber):
         # This function counts the amount of diffrent files analyzed by a chase.
         # Then it fetchesall into a result which iwll be a tuple which is then printed out
 
-        query = "SELECT COUNT(File.Hash) FROM File, Investigation WHERE File.Hash = Investigation.Hash AND CaseNumber = %s"
+        query = "SELECT COUNT(File.Hash) FROM File, Investigation WHERE File.CaseNumber = %s AND Investigation.CaseNumber = %s"
 
-        self.cursor.execute(query, (caseNumber,))
+        self.cursor.execute(query, (caseNumber,caseNumber))
 
         result = self.cursor.fetchall()
 
         print("\n#####################################\n")
-        print("CaseNumber: " + caseNumber)
+        print("CaseNumber: " + str(caseNumber))
         print("Count: " + str(result[0][0]))
         print("\n#####################################\n")
 
@@ -168,7 +191,8 @@ class MySqlProgram:
 
         print("\n#####################################\n")
         for i in result:
-            print("CaseNumber: " + str(i[0]) + ", FileName: " + i[1] + ", Hash: " + i[2] + ", IP: " + i[3])
+            print("\nCaseNumber: " + str(i[0]) + ", FileName: " + i[1] + ", Hash: " + i[2])
+            print("IP: " + i[3] + ", DomainName:" + i[4] + ", Ports: " + i[5])
         print("\n#####################################\n")
 
 
@@ -196,21 +220,31 @@ def main():
         print("Usage: %s <Username> <password> <database name>")
         sys.exit(1)
 
-    # Create tables
+    # Create tables and junction tables for many to many relationship
     sqlTableCase = '''CREATE TABLE Investigation (
     CaseNumber BIGINT NOT NULL PRIMARY KEY,
     investigationStart DATETIME NOT NULL,
-    Handler nvarchar(128) NOT NULL,
-    Hash nvarchar(128)
+    Handler nvarchar(128) NOT NULL
     )
     '''
+
     sqlTableFile = '''CREATE TABLE File (
     Hash nvarchar(128) NOT NULL PRIMARY KEY,
     FileName nvarchar(500) NOT NULL,
-    IP_ID nvarchar(128)
+    CaseNumber BIGINT,
+    FOREIGN KEY (CaseNumber) REFERENCES Investigation(CaseNumber)
     )
     '''
-    
+ 
+    sqlJunctionTableFileIp = ''' CREATE TABLE FileIpRelation (
+    Hash nvarchar(128) NOT NULL,
+    IP_ID nvarchar(128) NOT NULL,
+    FOREIGN KEY (Hash) REFERENCES File(Hash),
+    FOREIGN KEY (IP_ID) REFERENCES IP_Address(IP_ID),
+    UNIQUE (HASH, IP_ID)
+    )
+    '''
+
     sqlTableIP_Address = '''CREATE TABLE IP_Address(
     IP_ID nvarchar(128) NOT NULL PRIMARY KEY,
     IP nvarchar(32),
@@ -221,45 +255,34 @@ def main():
     )
     '''
 
-    # Add forgient key to tables
-    sqlTableFileAlter1 = ''' ALTER TABLE Investigation
-    ADD CONSTRAINT FK_Investigation_File
-    FOREIGN KEY (Hash)
-    REFERENCES File (Hash)
-    '''
-
-    sqlTableFileAlter2 = ''' ALTER TABLE File
-    ADD CONSTRAINT FK_FILE_IP
-    FOREIGN KEY (IP_ID)
-    REFERENCES IP_Address (IP_ID)
-    '''
-
     # Create a specific view
     sqlTableView = ''' CREATE VIEW InvestigationDetails AS 
-    SELECT CaseNumber, FileName, File.Hash, IP FROM Investigation 
-    JOIN File on File.Hash = Investigation.Hash 
-    JOIN IP_Address on File.IP_ID = IP_Address.IP_ID
+    SELECT Investigation.CaseNumber, FileName, File.Hash, IP, DomainName, Ports FROM Investigation 
+    JOIN File on File.CaseNumber = Investigation.CaseNumber
+    JOIN FileIpRelation on File.Hash = FileIpRelation.Hash
+    JOIN IP_Address on IP_Address.IP_ID = FileIpRelation.IP_ID
     '''
+
     # Connect to the database
     database = MySqlProgram(sys.argv[1], sys.argv[2], sys.argv[3])
 
     # Loop variable for terminal and the menu choices for the terminal
     loop = True
     terminal_menu = TerminalMenu([
-        "1. Create tables and views",
-        "2. Create FOREIGN key constraints",
-        "3. Create Case",
-        "4. Read file data",
-        "5. Read related IP address",
-        "6. Add Case data",
-        "7. Add File data",
-        "8. Add IP data",
-        "9. Query for files accoicted with specific IP address",
-        "10. Query for a file that is associated with a specific investigation",
-        "11. Query for a join table of case numbers, file names and the hashes",
-        "12. Query for a count on how many files are investigated by a specific case",
-        "13. Query for data in every case and present it in rows",
-        "14. Exit"]
+        "[A]. Create tables and views",
+        "[B]. Create Case",
+        "[C]. Read file data",
+        "[D]. Read related IP address",
+        "[E]. Add Case data",
+        "[F]. Add File",
+        "[G]. Add IP data",
+        "[H]. Create relationship between File data and IP Data",
+        "[I]. Query for files accoicted with specific IP address",
+        "[J]. Query for a file that is associated with a specific investigation",
+        "[K]. Query for a join table of case numbers, file names and the hashes",
+        "[L]. Query for a count on how many files are investigated by a specific case",
+        "[M]. Query for data in every case and present it in rows",
+        "[N]. Exit"]
         )
 
     # Loop will iterate untill exit
@@ -269,52 +292,60 @@ def main():
         choice = terminal_menu.show()
 
         if(choice == 0):
+            print("\n#####################################\n")
+            
             # Create tables
-            database.createTable(sqlTableCase)
-            database.createTable(sqlTableFile)
-            database.createTable(sqlTableIP_Address)
-            database.createTable(sqlTableView)
-
-        elif(choice == 1):
+            print("Creating Investigation, File, IP_Address table")
+            #database.createTable(sqlTableCase)
+            #database.createTable(sqlTableFile)
+            #database.createTable(sqlTableIP_Address)
+            
             # Creates forgien keys
-            database.createTable(sqlTableFileAlter1)
-            database.createTable(sqlTableFileAlter2)
-        elif(choice == 2):
+            # Create junction tables for many to many relationship
+            print("Creating bridge table FileIpRelation between File and IP_Address table")
+            ##database.createTable(sqlJunctionTableFileIp)
+            
+            # Create view
+            print("Creating View InvestigationDetails")
+            database.createTable(sqlTableView)
+            print("\n#####################################\n")
+        elif(choice == 1):
             # Adds case data
             caseNumber = input("Give case number: ")
             caseHandler = input("Give handler name: ")
             case = GenerateCase(caseNumber, caseHandler)
-        elif(choice == 3):
+        elif(choice == 2):
             # Adds file data
             fileName = input("Give filename: ")
             filePath = input("Give filepath: ")
             fData = FileData(fileName, filePath)
-        elif(choice == 4):
+        elif(choice == 3):
             # Adds IP information
             ip = input("Give IPv4 address to input: ")
             shodanInfo = ShodanLib()
             shodanInfo.ipInfo(ip)
             shodanInfo.generateId()
-        elif(choice == 5):
+        elif(choice == 4):
             # Insert data into the table for Investigation
-            caseTable = case.getCaseTable()
-            caseTable.append(fData.getHash())
-            database.insertCaseIntoDb(caseTable)
-        elif(choice == 6):
+            database.insertCaseIntoDb(case.getCaseTable())
+        elif(choice == 5):
             # Insert data into the table for File
             fileTable = fData.getFileTable()
-            fileTable.append(shodanInfo.getIpId())
+            fileTable.append(case.getCaseNumber())
             database.insertFileIntoDb(fileTable)
-        elif(choice == 7):
+        elif(choice == 6):
             # Insert data into the table for IP_Address
             database.insertIpIntoDb(shodanInfo.getIpTable())
+        elif(choice == 7):
+            # Insert the relation between a file and an IP Address
+            relation = [fData.getHash(), shodanInfo.getIpId()]
+            database.insertJunctionBetweenIPFileDb(relation)
         elif(choice == 8):
             # Querys for specific IP and IP
             ip = input("IP to be searched for: ")
-            ipId = input("ID for the IP to be serached for: ")
-            database.query1(ip, ipId)
-            # Query for specific hash
+            database.query1(ip)
         elif(choice == 9):
+            # Query for specific hash
             searchForHash = input("Input Sha256 hash to search for: ")
             database.query2(searchForHash)
         elif(choice == 10):

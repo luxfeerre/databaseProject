@@ -10,12 +10,5 @@ MySqlQuery.py is the application to run the program atm. Here the menu is defien
 Then it can generate the foreigen keys and created case data, file data and Ip data for the tables.
 Then this data can be inserted by first puting data into the IP_Address table, the File table, last the Case table to avoid dangeling keys.
 
-Then there are five querys which are:
-Get fiels accoicated with speicific IP_Table by inputing IP address and the specific ID for the table.
-Get file names that are accoicated with specific investigations by inputing a sha256 hash.
-Then there is a SQL JOIB statment that searches for specific cases releated to specific hashes and joins the tables.
-Then there is an aggreation that counts how many times a specific IP address has been related to specific files.
-Last a View is defined called InvestigationDetails that can be selected from in the last Query.
-The information here is FileName, File hashes, IP addresses realted to a specific CaseNumber and realted Files tables and IP_Address tables.
-
 A video demonstrating this can be found here:
+https://www.youtube.com/watch?v=HLA8B6Wjk5o
